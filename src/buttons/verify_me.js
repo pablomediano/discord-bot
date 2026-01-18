@@ -1,4 +1,5 @@
 const env = require("../config/env");
+const { logToChannel } = require("../core/logger");
 
 module.exports = {
     id: "verify_me",
@@ -14,19 +15,33 @@ module.exports = {
             });
         }
 
+        // YA VERIFICADO
         if (interaction.member.roles.cache.has(role.id)) {
-            return interaction.reply({
+            await interaction.reply({
                 content: "✅ Ya estás verificado.",
                 ephemeral: true
             });
+
+            await logToChannel(
+                interaction.guild,
+                `ℹ️ ${interaction.user.tag} intentó verificarse pero ya estaba verificado.`
+            );
+            return;
         }
 
+        // NUEVA VERIFICACIÓN
         try {
             await interaction.member.roles.add(role);
+
             await interaction.reply({
                 content: "✅ Verificado! Ya tienes acceso.",
                 ephemeral: true
             });
+
+            await logToChannel(
+                interaction.guild,
+                `✅ ${interaction.user.tag} se ha verificado correctamente.`
+            );
         } catch (e) {
             console.error(e);
             await interaction.reply({
