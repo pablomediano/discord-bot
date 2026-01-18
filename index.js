@@ -2,82 +2,77 @@ require("dotenv").config();
 const {
     Client,
     GatewayIntentBits,
-    REST,
-    Routes,
-    SlashCommandBuilder,
     ActionRowBuilder,
     ButtonBuilder,
-    ButtonStyle,
-    PermissionFlagsBits
+    ButtonStyle
 } = require("discord.js");
 
 const client = new Client({
     intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers]
 });
 
-const commands = [
-    new SlashCommandBuilder()
-        .setName("setup-verify")
-        .setDescription("Publica el mensaje de verificación con botón")
-        .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
-].map(c => c.toJSON());
-
-async function registerCommands() {
-    const rest = new REST({ version: "10" }).setToken(process.env.DISCORD_TOKEN);
-
-    await rest.put(
-        Routes.applicationGuildCommands(process.env.CLIENT_ID, process.env.GUILD_ID),
-        { body: commands }
-    );
-
-    console.log("✅ Slash commands registrados");
-}
-
 client.once("ready", async () => {
     console.log(`🤖 Logueado como ${client.user.tag}`);
-    await registerCommands();
+
+    const guild = client.guilds.cache.get(process.env.GUILD_ID);
+    if (!guild) return console.error("❌ No encuentro el servidor");
+
+    const channelName = process.env.VERIFY_CHANNEL_NAME || "verify";
+    const verifyChannel = guild.channels.cache.find(
+        c => c.name === channelName && c.isTextBased()
+    );
+
+    if (!verifyChannel) {
+        return console.error(`❌ No encuentro el canal #${channelName}`);
+    }
+
+    // Borrar mensajes anteriores del bot
+    const messages = await verifyChannel.messages.fetch({ limit: 10 });
+    const botMessages = messages.filter(m => m.author.id === client.user.id);
+    for (const msg of botMessages.values()) {
+        await msg.delete();
+    }
+
+    const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+            .setCustomId("verify_me")
+            .setLabel("✅ Verificarme")
+            .setStyle(ButtonStyle.Success)
+    );
+
+    await verifyChannel.send({
+        content: "Pulsa el botón para verificarte y acceder al servidor:",
+        components: [row]
+    });
+
+    console.log("✅ Botón de verificación publicado");
 });
 
 client.on("interactionCreate", async (interaction) => {
-    // /setup-verify
-    if (interaction.isChatInputCommand() && interaction.commandName === "setup-verify") {
-        const row = new ActionRowBuilder().addComponents(
-            new ButtonBuilder()
-                .setCustomId("verify_me")
-                .setLabel("✅ Verificarme")
-                .setStyle(ButtonStyle.Success)
-        );
+    if (!interaction.isButton() || interaction.customId !== "verify_me") return;
 
-        await interaction.reply({
-            content: "Pulsa el botón para verificarte y recibir acceso al servidor:",
-            components: [row]
+    const roleName = process.env.VERIFIED_ROLE_NAME || "Verified";
+    const role = interaction.guild.roles.cache.find(r => r.name === roleName);
+
+    if (!role) {
+        return interaction.reply({
+            content: `❌ No encuentro el rol "${roleName}"`,
+            ephemeral: true
         });
-        return;
     }
 
-    // Botón verify
-    if (interaction.isButton() && interaction.customId === "verify_me") {
-        const roleName = process.env.VERIFIED_ROLE_NAME || "Verified";
-        const role = interaction.guild.roles.cache.find(r => r.name === roleName);
-
-        if (!role) {
-            await interaction.reply({
-                content: `❌ No encuentro el rol "${roleName}". Créalo primero.`,
-                ephemeral: true
-            });
-            return;
-        }
-
-        try {
-            await interaction.member.roles.add(role);
-            await interaction.reply({ content: "✅ Verificado! Ya tienes acceso.", ephemeral: true });
-        } catch (e) {
-            console.error(e);
-            await interaction.reply({
-                content: "❌ No pude asignarte el rol. Revisa permisos y la posición del rol del bot.",
-                ephemeral: true
-            });
-        }
+    try {
+        await interaction.member.roles.add(role);
+        await interaction.reply({
+            content: "✅ Verificado! Ya tienes acceso al servidor.",
+            ephemeral: true
+        });
+    } catch (e) {
+        console.error(e);
+        await interaction.reply({
+            content: "❌ No pude asignarte el rol. Revisa permisos del bot.",
+            ephemeral: true
+        });
     }
 });
 
