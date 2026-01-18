@@ -1,19 +1,24 @@
 {
   "name": "discord-bot",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Discord bot with verification button and role system",
+  "main": "src/index.js",
+  "type": "commonjs",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node src/index.js"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/pablomediano/discord-bot.git"
   },
-  "keywords": [],
-  "author": "",
+  "keywords": [
+    "discord",
+    "bot",
+    "discord.js",
+    "verification"
+  ],
+  "author": "Pablo",
   "license": "ISC",
-  "type": "commonjs",
   "bugs": {
     "url": "https://github.com/pablomediano/discord-bot/issues"
   },
