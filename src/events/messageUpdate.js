@@ -1,13 +1,11 @@
 const { Events } = require("discord.js");
-const { logToChannel } = require("../core/logger");
+const { baseEmbed, logEmbed } = require("../core/logger");
 
 module.exports = {
     name: Events.MessageUpdate,
     async execute(client, oldMessage, newMessage) {
-        // Ignora DMs
         if (!newMessage.guild) return;
 
-        // Si vienen partials, intenta fetch
         if (oldMessage.partial) {
             try { oldMessage = await oldMessage.fetch(); } catch {}
         }
@@ -15,30 +13,26 @@ module.exports = {
             try { newMessage = await newMessage.fetch(); } catch {}
         }
 
-        // Ignora bots
         if (newMessage.author?.bot) return;
 
-        const oldContent = (oldMessage.content ?? "").trim();
-        const newContent = (newMessage.content ?? "").trim();
+        const oldText = (oldMessage.content ?? "").trim();
+        const newText = (newMessage.content ?? "").trim();
+        if (oldText === newText) return;
 
-        // Evita spam: embeds/ediciones que no cambian texto
-        if (oldContent === newContent) return;
+        const clip = (t, max = 900) => (t.length > max ? t.slice(0, max) + "…" : t);
 
-        const author = newMessage.author ? newMessage.author.tag : "Desconocido";
-        const channelName = newMessage.channel?.name ? `#${newMessage.channel.name}` : "canal desconocido";
+        const embed = baseEmbed({
+            title: "✏️ Mensaje editado",
+            member: newMessage.member ?? null,
+            channel: newMessage.channel,
+            color: 0xFEE75C
+        });
 
-        // Acorta si es enorme (Discord limita longitud de mensajes)
-        const clip = (text, max = 800) =>
-            text.length > max ? text.slice(0, max) + "…" : text;
-
-        const oldShown = oldContent.length ? clip(oldContent) : "(no disponible / no estaba en caché)";
-        const newShown = newContent.length ? clip(newContent) : "(vacío)";
-
-        await logToChannel(
-            newMessage.guild,
-            `✏️ **${author}** editó un mensaje en **${channelName}**:\n` +
-            `**Antes:**\n> ${oldShown}\n` +
-            `**Después:**\n> ${newShown}`
+        embed.addFields(
+            { name: "Antes", value: oldText ? `\`\`\`\n${clip(oldText)}\n\`\`\`` : "_(no disponible)_", inline: false },
+            { name: "Después", value: newText ? `\`\`\`\n${clip(newText)}\n\`\`\`` : "_(vacío)_", inline: false }
         );
+
+        await logEmbed(newMessage.guild, embed);
     }
 };

@@ -1,5 +1,6 @@
 const env = require("../config/env");
-const { logToChannel } = require("../core/logger");
+const { baseEmbed, logEmbed } = require("../core/logger");
+const { MessageFlags } = require("discord.js");
 
 module.exports = {
     id: "verify_me",
@@ -11,42 +12,50 @@ module.exports = {
         if (!role) {
             return interaction.reply({
                 content: `❌ No existe el rol "${env.VERIFIED_ROLE_NAME}"`,
-                ephemeral: true
+                flags: MessageFlags.Ephemeral
             });
         }
 
-        // YA VERIFICADO
+        // Ya verificado
         if (interaction.member.roles.cache.has(role.id)) {
             await interaction.reply({
                 content: "✅ Ya estás verificado.",
-                ephemeral: true
+                flags: MessageFlags.Ephemeral
             });
 
-            await logToChannel(
-                interaction.guild,
-                `ℹ️ ${interaction.user.tag} intentó verificarse pero ya estaba verificado.`
-            );
+            const embed = baseEmbed({
+                title: "✅ Verificación",
+                member: interaction.member,
+                color: 0x5865f2,
+                description: "Intentó verificarse, pero ya estaba verificado."
+            });
+
+            await logEmbed(interaction.guild, embed);
             return;
         }
 
-        // NUEVA VERIFICACIÓN
+        // Verificación nueva
         try {
             await interaction.member.roles.add(role);
 
             await interaction.reply({
                 content: "✅ Verificado! Ya tienes acceso.",
-                ephemeral: true
+                flags: MessageFlags.Ephemeral
             });
 
-            await logToChannel(
-                interaction.guild,
-                `✅ ${interaction.user.tag} se ha verificado correctamente.`
-            );
+            const embed = baseEmbed({
+                title: "✅ Verificación",
+                member: interaction.member,
+                color: 0x57f287,
+                description: `Se ha asignado el rol **${env.VERIFIED_ROLE_NAME}**.`
+            });
+
+            await logEmbed(interaction.guild, embed);
         } catch (e) {
             console.error(e);
             await interaction.reply({
-                content: "❌ No pude asignar el rol. Revisa permisos.",
-                ephemeral: true
+                content: "❌ No pude asignar el rol. Revisa permisos/posición del rol del bot.",
+                flags: MessageFlags.Ephemeral
             });
         }
     }
